@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>和音ピアノ（3の15分音）</title>
+  <title>和音ピアノ（fₙ = 220 × 3ⁿ⁄¹⁵）</title>
   <style>
     body {
       font-family: sans-serif;
@@ -10,37 +10,40 @@
       background: #f5f5f5;
     }
     #keyboard {
-      display: flex;
-      justify-content: center;
-      margin: 20px;
       position: relative;
       height: 200px;
+      margin: 20px auto;
+      width: max-content;
     }
-    .key {
+    .white-key {
       width: 40px;
       height: 200px;
-      margin: 1px;
-      border: 1px solid #ccc;
       background: white;
+      border: 1px solid #ccc;
+      display: inline-block;
       position: relative;
       z-index: 1;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      font-size: 12px;
-      user-select: none;
+      box-sizing: border-box;
     }
-    .key.black {
+    .black-key {
       width: 30px;
       height: 120px;
       background: black;
-      color: white;
       position: absolute;
+      top: 0;
       z-index: 2;
-      margin-left: -15px;
+      color: white;
+      font-size: 10px;
+      text-align: center;
     }
-    .key.pressed {
-      background: #ffd700 !important;
+    .pressed {
+      background-color: #ffd700 !important;
+    }
+    .label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      font-size: 12px;
     }
     #controls {
       margin-top: 20px;
@@ -49,22 +52,19 @@
       margin: 5px;
       padding: 10px 20px;
     }
-    a {
-      display: block;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
-  <h1>🎶 和音ピアノ（fₙ = 220 × 3ⁿ⁄¹⁵）</h1>
-
+  <h1>🎹 和音ピアノ（fₙ = 220 × 3ⁿ⁄¹⁵）</h1>
   <div id="keyboard"></div>
 
   <div id="controls">
     <button onclick="startRecording()">⏺️ 録音開始</button>
     <button onclick="stopRecording()">⏹️ 録音停止</button>
-    <a id="downloadLink" style="display: none" download="recording.webm">⬇️ 録音ダウンロード</a>
+    <a id="downloadLink" style="display:none" download="recording.webm">⬇️ 録音ダウンロード</a>
   </div>
+
+  <div class="keyboard" id="keyboard"></div>
 
   <script>
     const f0 = 220;
@@ -81,7 +81,7 @@
       'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
       '1': 30, '2': 31
     };
-    
+
     let audioCtx, destination, mediaRecorder, recordedChunks = [];
     const activeOscillators = {};
 
@@ -90,19 +90,15 @@
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         destination = audioCtx.createMediaStreamDestination();
         mediaRecorder = new MediaRecorder(destination.stream);
-
         mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-
         mediaRecorder.onstop = () => {
           const blob = new Blob(recordedChunks, { type: 'audio/webm' });
           const url = URL.createObjectURL(blob);
           const link = document.getElementById("downloadLink");
           link.href = url;
           link.style.display = "inline";
-          link.textContent = "⬇️ 録音ダウンロード";
         };
-
-        startSilence(); // ← 休符対策
+        startSilence();
       }
     }
 
@@ -118,11 +114,23 @@
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
       for (let n = 0; n < totalKeys; n++) {
+        const isBlack = blackKeyIndices.includes(n);
         const key = document.createElement("div");
-        key.className = "key";
-        if (blackKeyIndices.includes(n)) key.classList.add("black");
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = keyLabels[n] || n;
+
         key.dataset.n = n;
-        key.textContent = keyLabels[n] || n;
+        key.appendChild(label);
+
+        if (isBlack) {
+          key.className = "black-key";
+          // 黒鍵を白鍵間に配置（左にずらす）
+          const leftOffset = n * 41 - 10;
+          key.style.left = `${leftOffset}px`;
+        } else {
+          key.className = "white-key";
+        }
 
         key.addEventListener("mousedown", () => play(n));
         key.addEventListener("mouseup", () => stop(n));
@@ -143,7 +151,7 @@
       gainNode.connect(destination);
       osc.start();
       activeOscillators[n] = { osc, gainNode };
-      document.querySelector(`.key[data-n="${n}"]`)?.classList.add("pressed");
+      document.querySelector(`[data-n="${n}"]`)?.classList.add("pressed");
     }
 
     function stop(n) {
@@ -153,7 +161,7 @@
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
         osc.stop(audioCtx.currentTime + 0.2);
         delete activeOscillators[n];
-        document.querySelector(`.key[data-n="${n}"]`)?.classList.remove("pressed");
+        document.querySelector(`[data-n="${n}"]`)?.classList.remove("pressed");
       }
     }
 
