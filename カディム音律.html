@@ -110,6 +110,13 @@
     // 無限再生（止めるときは記録停止後に手動で止めてもOK）
     }
 
+    document.addEventListener("keydown", (event) => {
+       const n = keyToIndex[event.key];
+       if (n !== undefined && n >= 0 && n < totalKeys) {
+         const freq = f0 * Math.pow(step, n);
+         playTone(freq);
+       }
+    });
 
     function initAudioContext() {
       if (!audioCtx) {
