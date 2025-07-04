@@ -82,6 +82,15 @@
     const totalKeys = 31;
     const blackKeys = [2,6,10,14,17,21,25,29];
     const labels = ["Da","Na","Fi","Ke","Me","She","Ba","Ha","Se","Je","Ya","Wa","Cha","Pa","Tu"];
+    const keyToIndex = {
+      'a': 0,  's': 1,  'd': 2,  'f': 3,  'g': 4,
+      'h': 5,  'j': 6,  'k': 7,  'l': 8,  ';': 9,
+      'q': 10, 'w': 11, 'e': 12, 'r': 13, 't': 14,
+      'y': 15, 'u': 16, 'i': 17, 'o': 18, 'p': 19,
+      'z': 20, 'x': 21, 'c': 22, 'v': 23, 'b': 24,
+      'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
+      '1': 30, '2': 31
+    };
 
     let audioCtx;
     let mediaRecorder;
