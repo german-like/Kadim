@@ -96,6 +96,14 @@
     let mediaRecorder;
     let recordedChunks = [];
     let destination;
+
+    document.addEventListener("keydown", (event) => {
+      const n = keyToIndex[event.key];
+      if (n !== undefined && n >= 0 && n < totalKeys) {
+        const freq = f0 * Math.pow(step, n);
+        playTone(freq);
+      }
+    });
     
     // 無音の持続ノードを作る関数
     function startSilence() {
