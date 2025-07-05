@@ -80,7 +80,7 @@
     const f0 = 220;
     const step = Math.pow(3 , 1 / 15);
     const totalKeys = 31;
-    const blackKeys = [1,3,4,6,8,10,11,13,16,18,19,21,23,25,26,28];
+    const blackKeys = [2,5,8,11,14,17,20,23,26,29,32];
     const labels = ["Da","Na","Fi","Ke","Me","She","Ba","Ha","Se","Je","Ya","Wa","Cha","Pa","Tu"];
     const keyToIndex = {
       'a': 0,  's': 1,  'd': 2,  'f': 3,  'g': 4,
@@ -132,7 +132,7 @@
           const link = document.getElementById("downloadLink");
           link.href = url;
           link.style.display = "inline";
-          link.textContent = "⬇️ ダウンロード録音";
+          link.textContent = "🗃️ ダウンロード";
           
           startSilence(); // ←🔴 ここを追加！
           
