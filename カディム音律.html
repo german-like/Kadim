@@ -141,29 +141,35 @@
     }
 
     function playTone(frequency, duration = 1500, volume = 1.0) {
+function playTone(frequency, duration = 800, volume = 1.0) {
   if (!audioCtx) return;
 
-  const harmonics = [1, 2, 3, 5, 7]; // 1=基音, 2=第2倍音, 3=第3倍音
-  const volumes = [0.8, 0.4, 0.2, 0.1, 0.05]; // 各倍音の相対音量（基音:倍音）
+  const harmonics = [1, 2, 3]; // 基音、第2倍音、第3倍音
+  const volumes = [0.8, 0.4, 0.2]; // 各倍音の音量
+
+  const now = audioCtx.currentTime;
+  const durationSec = duration / 1000;
 
   harmonics.forEach((multiplier, i) => {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
-    osc.type = 'square';
-    osc.frequency.value = frequency * multiplier;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency * multiplier, now);
 
-    gain.gain.setValueAtTime(volume * volumes[i], audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    const amp = volume * (volumes[i] || 0); // volumes[i] が undefined にならないよう保護
+    gain.gain.setValueAtTime(amp, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-    gain.connect(destination); // 録音用
+    gain.connect(destination); // 録音にも送る
 
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration / 1000);
+    osc.start(now);
+    osc.stop(now + durationSec);
   });
 }
+
 
     
     function createKeyboard() {
