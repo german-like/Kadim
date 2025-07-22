@@ -141,7 +141,7 @@
       }
     }
 
-function playTone(frequency, duration = 1000, volume = 1.0) {
+function playTone(frequency, duration = 3000, volume = 1.0) {
   if (!audioCtx) return;
 
   const harmonics = [1, 2, 3, 4, 5, 6, 7, 8]; // 1=基音, 2=第2倍音, 3=第3倍音
