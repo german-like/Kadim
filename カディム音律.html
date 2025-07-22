@@ -141,11 +141,11 @@
       }
     }
 
-function playTone(frequency, duration = 3000, volume = 1.0) {
+function playTone(frequency, duration = 1000, volume = 1.0) {
   if (!audioCtx) return;
 
   const harmonics = [1, 2, 3, 4, 5]; // 1=基音, 2=第2倍音, 3=第3倍音
-  const volumes = [0.8, 0.05, 0.4, 0.02, 0.25]; // 各倍音の相対音量（基音:倍音）
+  const volumes = [0.8, 0.05, 0.4, 0.02, 0.45]; // 各倍音の相対音量（基音:倍音）
 
   harmonics.forEach((multiplier, i) => {
     const osc = audioCtx.createOscillator();
