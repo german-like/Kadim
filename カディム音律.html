@@ -200,6 +200,23 @@ function playTone(frequency, duration = 1500, volume = 1.0) {
     }
 
     // 録音制御
+    document.getElementById("stopRec").addEventListener("click", () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+  }
+
+  if (silentOsc) {
+    silentOsc.stop();
+    silentOsc.disconnect();
+    silentGain.disconnect();
+    silentOsc = null;
+    silentGain = null;
+  }
+
+  document.getElementById("startRec").disabled = false;
+  document.getElementById("stopRec").disabled = true;
+});
+
 document.getElementById("startRec").addEventListener("click", () => {
   initAudioContext();
   recordedChunks = [];
