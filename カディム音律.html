@@ -98,7 +98,6 @@
     let destination;
 
     document.addEventListener("keydown", (event) => {
-      initAudioContext();
       const n = keyToIndex[event.key];
       if (n !== undefined && n >= 0 && n < totalKeys) {
         const freq = f0 * Math.pow(step, n);
@@ -107,74 +106,60 @@
     });
     
     // 無音の持続ノードを作る関数
-function startSilence() {
-  if (silentOsc) return; // すでに動作中なら何もしない
+    function startSilence() {
+    const silentOsc = audioCtx.createOscillator();
+    const silentGain = audioCtx.createGain();
+    silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
 
-  silentOsc = audioCtx.createOscillator();
-  silentGain = audioCtx.createGain();
-  silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
+    silentOsc.connect(silentGain);
+    silentGain.connect(destination); // 録音先にだけ接続（スピーカーには出さない）
 
-  silentOsc.connect(silentGain);
-  silentGain.connect(destination); // 録音にだけ流す
-
-  silentOsc.start();
-}
-
-
-function initAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    destination = audioCtx.createMediaStreamDestination();
-    mediaRecorder = new MediaRecorder(destination.stream);
-
-    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      const link = document.getElementById("downloadLink");
-      link.href = url;
-      link.style.display = "inline";
-      link.textContent = "⬇️ ダウンロード録音";
-    };
-  }
-
-  // 🔽 AudioContext が一時停止状態なら resume しておく
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-}
+    silentOsc.start();
+    // 無限再生（止めるときは記録停止後に手動で止めてもOK）
+    }
 
 
-function playTone(frequency, duration = 1500, volume = 1.0) {
-  if (!audioCtx) return;
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        destination = audioCtx.createMediaStreamDestination();
+        mediaRecorder = new MediaRecorder(destination.stream);
 
-  const harmonics = [1, 2, 3]; // 基音、第2倍音、第3倍音
-  const volumes = [0.8, 0.4, 0.2]; // 各倍音の音量
+        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
 
-  const now = audioCtx.currentTime;
-  const durationSec = duration / 1000;
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          const link = document.getElementById("downloadLink");
+          link.href = url;
+          link.style.display = "inline";
+          link.textContent = "⬇️ ダウンロード録音";
+          
+          startSilence(); // ←🔴 ここを追加！
+          
+        };
+      }
+    }
 
-  harmonics.forEach((multiplier, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    function playTone(frequency, duration = 1500, volume = 1.0) {
+      initAudioContext();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(frequency * multiplier, now);
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
 
-    const amp = volume * (volumes[i] || 0); // volumes[i] が undefined にならないよう保護
-    gain.gain.setValueAtTime(amp, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
 
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.connect(destination); // 録音にも送る
+      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
 
-    osc.start(now);
-    osc.stop(now + durationSec);
-  });
-}
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);        // スピーカーへ
+      gainNode.connect(destination);                 // 録音へ
 
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + duration / 1000);
+    }
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
@@ -200,36 +185,20 @@ function playTone(frequency, duration = 1500, volume = 1.0) {
     }
 
     // 録音制御
+    document.getElementById("startRec").addEventListener("click", () => {
+      initAudioContext();
+      recordedChunks = [];
+      mediaRecorder.start();
+      document.getElementById("startRec").disabled = true;
+      document.getElementById("stopRec").disabled = false;
+      document.getElementById("downloadLink").style.display = "none";
+    });
+
     document.getElementById("stopRec").addEventListener("click", () => {
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-  }
-
-  if (silentOsc) {
-    silentOsc.stop();
-    silentOsc.disconnect();
-    silentGain.disconnect();
-    silentOsc = null;
-    silentGain = null;
-  }
-
-  document.getElementById("startRec").disabled = false;
-  document.getElementById("stopRec").disabled = true;
-});
-
-document.getElementById("startRec").addEventListener("click", () => {
-  initAudioContext();
-  recordedChunks = [];
-  mediaRecorder.start();
-  startSilence();
-
-  // 🔽 この行を追加！録音開始と同時に無音信号を流す
-  startSilence();
-
-  document.getElementById("startRec").disabled = true;
-  document.getElementById("stopRec").disabled = false;
-  document.getElementById("downloadLink").style.display = "none";
-});
+      mediaRecorder.stop();
+      document.getElementById("startRec").disabled = false;
+      document.getElementById("stopRec").disabled = true;
+    });
 
     createKeyboard();
   </script>
