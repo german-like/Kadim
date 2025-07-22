@@ -141,7 +141,7 @@
       }
     }
 
-function playTone(frequency, duration = 800, volume = 1.0) {
+function playTone(frequency, duration = 3000, volume = 1.0) {
   if (!audioCtx) return;
 
   const harmonics = [1, 2, 3, 4, 5]; // 1=基音, 2=第2倍音, 3=第3倍音
@@ -151,7 +151,7 @@ function playTone(frequency, duration = 800, volume = 1.0) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
-    osc.type = 'square';
+    osc.type = 'sine';
     osc.frequency.value = frequency * multiplier;
 
     gain.gain.setValueAtTime(volume * volumes[i], audioCtx.currentTime);
