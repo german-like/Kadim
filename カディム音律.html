@@ -141,25 +141,35 @@
       }
     }
 
-    function playTone(frequency, duration = 1500, volume = 1.0) {
-      initAudioContext();
+function playTone(frequency, duration = 800, volume = 1.0) {
+  if (!audioCtx) return;
 
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+  const harmonics = [1, 2, 3]; // 基音、第2倍音、第3倍音
+  const volumes = [0.8, 0.4, 0.2]; // 各倍音の音量
 
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
+  const now = audioCtx.currentTime;
+  const durationSec = duration / 1000;
 
-      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+  harmonics.forEach((multiplier, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);        // スピーカーへ
-      gainNode.connect(destination);                 // 録音へ
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency * multiplier, now);
 
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + duration / 1000);
-    }
+    const amp = volume * (volumes[i] || 0); // volumes[i] が undefined にならないよう保護
+    gain.gain.setValueAtTime(amp, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.connect(destination); // 録音にも送る
+
+    osc.start(now);
+    osc.stop(now + durationSec);
+  });
+}
+
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
