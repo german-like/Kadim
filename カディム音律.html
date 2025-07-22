@@ -141,7 +141,7 @@
       }
     }
 
-function playTone(frequency, duration = 800, volume = 1.0) {
+function playTone(frequency, duration = 1500, volume = 1.0) {
   if (!audioCtx) return;
 
   const harmonics = [1, 2, 3]; // 基音、第2倍音、第3倍音
@@ -195,20 +195,18 @@ function playTone(frequency, duration = 800, volume = 1.0) {
     }
 
     // 録音制御
-    document.getElementById("startRec").addEventListener("click", () => {
-      initAudioContext();
-      recordedChunks = [];
-      mediaRecorder.start();
-      document.getElementById("startRec").disabled = true;
-      document.getElementById("stopRec").disabled = false;
-      document.getElementById("downloadLink").style.display = "none";
-    });
+document.getElementById("startRec").addEventListener("click", () => {
+  initAudioContext();
+  recordedChunks = [];
+  mediaRecorder.start();
 
-    document.getElementById("stopRec").addEventListener("click", () => {
-      mediaRecorder.stop();
-      document.getElementById("startRec").disabled = false;
-      document.getElementById("stopRec").disabled = true;
-    });
+  // 🔽 この行を追加！録音開始と同時に無音信号を流す
+  startSilence();
+
+  document.getElementById("startRec").disabled = true;
+  document.getElementById("stopRec").disabled = false;
+  document.getElementById("downloadLink").style.display = "none";
+});
 
     createKeyboard();
   </script>
