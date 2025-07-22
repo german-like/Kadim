@@ -133,7 +133,7 @@
           const link = document.getElementById("downloadLink");
           link.href = url;
           link.style.display = "inline";
-          link.textContent = "⬇️ ダウンロード録音";
+          link.textContent = "🗃️ ダウンロード録音";
           
           startSilence(); // ←🔴 ここを追加！
           
@@ -141,25 +141,30 @@
       }
     }
 
-    function playTone(frequency, duration = 1500, volume = 1.0) {
-      initAudioContext();
+function playTone(frequency, duration = 800, volume = 1.0) {
+  if (!audioCtx) return;
 
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+  const harmonics = [1, 2, 3]; // 1=基音, 2=第2倍音, 3=第3倍音
+  const volumes = [0.8, 0.4, 0.2]; // 各倍音の相対音量（基音:倍音）
 
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
+  harmonics.forEach((multiplier, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    osc.type = 'sine';
+    osc.frequency.value = frequency * multiplier;
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);        // スピーカーへ
-      gainNode.connect(destination);                 // 録音へ
+    gain.gain.setValueAtTime(volume * volumes[i], audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
 
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + duration / 1000);
-    }
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.connect(destination); // 録音用
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration / 1000);
+  });
+}
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
