@@ -142,29 +142,21 @@
     }
 
 function playTone(frequency, duration = 800, volume = 1.0) {
-  if (!audioCtx) return;
+// ユニゾン風に2つ鳴らす
+[0, 0.02].forEach((detune) => {
+  const osc = audioCtx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.value = frequency * (1 + detune);
 
-  const harmonics = [1, 2, 3]; // 1=基音, 2=第2倍音, 3=第3倍音
-  const volumes = [0.8, 0.4, 0.2]; // 各倍音の相対音量（基音:倍音）
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(volume / 2, audioCtx.currentTime);
 
-  harmonics.forEach((multiplier, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.value = frequency * multiplier;
-
-    gain.gain.setValueAtTime(volume * volumes[i], audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.connect(destination); // 録音用
-
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration / 1000);
-  });
-}
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.connect(destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration / 1000);
+});
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
