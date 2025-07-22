@@ -98,6 +98,7 @@
     let destination;
 
     document.addEventListener("keydown", (event) => {
+      initAudioContext();
       const n = keyToIndex[event.key];
       if (n !== undefined && n >= 0 && n < totalKeys) {
         const freq = f0 * Math.pow(step, n);
@@ -119,27 +120,30 @@
     }
 
 
-    function initAudioContext() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        destination = audioCtx.createMediaStreamDestination();
-        mediaRecorder = new MediaRecorder(destination.stream);
+function initAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    destination = audioCtx.createMediaStreamDestination();
+    mediaRecorder = new MediaRecorder(destination.stream);
 
-        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
 
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-          const url = URL.createObjectURL(blob);
-          const link = document.getElementById("downloadLink");
-          link.href = url;
-          link.style.display = "inline";
-          link.textContent = "⬇️ ダウンロード録音";
-          
-          startSilence(); // ←🔴 ここを追加！
-          
-        };
-      }
-    }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      const link = document.getElementById("downloadLink");
+      link.href = url;
+      link.style.display = "inline";
+      link.textContent = "⬇️ ダウンロード録音";
+    };
+  }
+
+  // 🔽 AudioContext が一時停止状態なら resume しておく
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
 
 function playTone(frequency, duration = 1500, volume = 1.0) {
   if (!audioCtx) return;
@@ -199,6 +203,7 @@ document.getElementById("startRec").addEventListener("click", () => {
   initAudioContext();
   recordedChunks = [];
   mediaRecorder.start();
+  startSilence();
 
   // 🔽 この行を追加！録音開始と同時に無音信号を流す
   startSilence();
