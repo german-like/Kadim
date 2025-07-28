@@ -80,7 +80,7 @@
     const f0 = 100;
     const step = Math.pow(3 , 1 / 15);
     const totalKeys = 31;
-    const blackKeys = [2,6,10,14,17,21,25,29];
+    const blackKeys = [4,9,14,19,24,29];
     const labels = ["Da","Na","Fi","Ke","Me","She","Ba","Ha","Se","Je","Ya","Wa","Cha","Pa","Tu"];
     const keyToIndex = {
       'a': 0,  's': 1,  'd': 2,  'f': 3,  'g': 4,
@@ -144,8 +144,8 @@
 function playTone(frequency, duration = 3000, volume = 1.0) {
   if (!audioCtx) return;
 
-  const harmonics = [1, 2, 3, 4, 5, 6, 7, 8]; // 1=基音, 2=第2倍音, 3=第3倍音
-  const volumes = [1.0, 0.5, 0.3, 0.2, 0.15, 0.1, 0.075, 0.05]; // 各倍音の相対音量（基音:倍音）
+  const harmonics = [1, 3, 5, 7, 9, 11]; // 1=基音, 2=第2倍音, 3=第3倍音
+  const volumes = [1.0, 0.5, 0.2, 0.15, 0.1, 0.075]; // 各倍音の相対音量（基音:倍音）
 
   harmonics.forEach((multiplier, i) => {
     const osc = audioCtx.createOscillator();
