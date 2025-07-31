@@ -69,6 +69,8 @@
 </head>
 <body>
   <h2>カディム式鍵盤</h2>
+  <p>押している間だけ音が鳴り、録音・ダウンロードができます。</p>
+
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
@@ -92,7 +94,6 @@
       'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
       '1': 30, '2': 31, '3': 32, '4': 33, '5': 34,
     };
-    const keyboard = document.getElementById("keyboard");
 
     let audioCtx;
     let destination;
@@ -108,7 +109,7 @@
 
         mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
         mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
           const url = URL.createObjectURL(blob);
           const link = document.getElementById("downloadLink");
           link.href = url;
@@ -152,34 +153,18 @@
     }
 
     function createKeyboard() {
-  const keyboard = document.getElementById("keyboard");
-
-  for (let n = 0; n < totalKeys; n++) {
-    const freq = f0 * Math.pow(step, n);
-    const isBlack = blackKeys.includes(n);
-    const label = labels[n % labels.length];
-
-    const key = document.createElement("div");
-    key.className = "key " + (isBlack ? "black" : "white");
-
-    const textColor = isBlack ? "white" : "black";
-
-    key.innerHTML = `
-      <div class="label-top" style="color: ${textColor};">${label}</div>
-      <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
-    `;
-
-    if (isBlack) {
-      // 1白鍵 = 40px → 中央に置くために左端を調整
-      key.style.left = `${n * 40 - 15}px`;
-    } else {
-      key.style.marginLeft = "0";
-    }
-
-    keyboard.appendChild(key);
-  }
-}
-
+      const keyboard = document.getElementById("keyboard");
+      for (let n = 0; n < totalKeys; n++) {
+        const freq = f0 * Math.pow(step, n);
+        const isBlack = blackKeys.includes(n);
+        const label = labels[n % labels.length];
+        const key = document.createElement("div");
+        key.className = "key " + (isBlack ? "black" : "white");
+        const textColor = isBlack ? "white" : "black";
+        key.innerHTML = `
+          <div class="label-top" style="color: ${textColor};">${label}</div>
+          <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
+        `;
 
         key.addEventListener("pointerdown", (e) => {
           e.preventDefault();
