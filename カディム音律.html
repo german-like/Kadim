@@ -152,24 +152,32 @@
     }
 
     function createKeyboard() {
-      const keyboard = document.getElementById("keyboard");
-      for (let n = 0; n < totalKeys; n++) {
-  const freq = f0 * Math.pow(step, n);
-  const isBlack = blackKeys.includes(n);
-  const label = labels[n % labels.length];
+  const keyboard = document.getElementById("keyboard");
 
-  const key = document.createElement("div");
-  key.className = "key " + (isBlack ? "black" : "white");
+  for (let n = 0; n < totalKeys; n++) {
+    const freq = f0 * Math.pow(step, n);
+    const isBlack = blackKeys.includes(n);
+    const label = labels[n % labels.length];
 
-  const textColor = isBlack ? "white" : "black";
+    const key = document.createElement("div");
+    key.className = "key " + (isBlack ? "black" : "white");
 
-  key.innerHTML = `
-    <div class="label-top" style="color: ${textColor};">${label}</div>
-    <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
-  `;
+    const textColor = isBlack ? "white" : "black";
 
-  key.addEventListener("click", () => playTone(freq));
-  keyboard.appendChild(key);
+    key.innerHTML = `
+      <div class="label-top" style="color: ${textColor};">${label}</div>
+      <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
+    `;
+
+    if (isBlack) {
+      // 1白鍵 = 40px → 中央に置くために左端を調整
+      key.style.left = `${n * 40 - 15}px`;
+    } else {
+      key.style.marginLeft = "0";
+    }
+
+    keyboard.appendChild(key);
+  }
 }
 
 
