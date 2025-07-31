@@ -30,6 +30,9 @@
     .black {
       background: #433333;
       color: white;
+      margin-left: -20px;
+      margin-right: -20px;
+      z-index: 1;
     }
 
     .black:hover {
@@ -66,142 +69,153 @@
 </head>
 <body>
   <h2>カディム式鍵盤</h2>
-  <p>任意の音を鳴らし、録音し、ダウンロードできます。</p>
+  <p>押している間だけ音が鳴り、録音・ダウンロードができます。</p>
 
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
-    <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
+    <a id="downloadLink" style="display:none;" download="recording.webm">🗃️ ダウンロード</a>
   </div>
 
   <div class="keyboard" id="keyboard"></div>
 
   <script>
-// --- 音声コンテキストと管理用 ---
-let audioCtx;
-let destination;
-let oscillators = {}; // 複数倍音オシレータ管理：キーID → [osc,gain,...]
-
-// --- AudioContext初期化 ---
-function initAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    destination = audioCtx.createMediaStreamDestination();
-    mediaRecorder = new MediaRecorder(destination.stream);
-
-    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      const link = document.getElementById("downloadLink");
-      link.href = url;
-      link.style.display = "inline";
-      link.textContent = "🗃️ ダウンロード録音";
-      startSilence();
+    const f0 = 100;
+    const step = Math.pow(3, 1 / 17);
+    const totalKeys = 37;
+    const blackKeys = [2,3,6,7,10,11,14,15,19,20,22,23,26,27,30,31,34,35];
+    const labels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa"];
+    const keyToIndex = {
+      'a': 0,  's': 1,  'd': 2,  'f': 3,  'g': 4,
+      'h': 5,  'j': 6,  'k': 7,  'l': 8,  ';': 9,
+      'q': 10, 'w': 11, 'e': 12, 'r': 13, 't': 14,
+      'y': 15, 'u': 16, 'i': 17, 'o': 18, 'p': 19,
+      'z': 20, 'x': 21, 'c': 22, 'v': 23, 'b': 24,
+      'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
+      '1': 30, '2': 31, '3': 32, '4': 33, '5': 34,
     };
-  }
-}
 
-// --- 押している間音を鳴らす開始 ---
-function startTone(freq, id) {
-  if (!audioCtx) return;
-  if (oscillators[id]) return; // すでに鳴ってたら無視
+    let audioCtx;
+    let destination;
+    let mediaRecorder;
+    let recordedChunks = [];
+    const oscillators = {};
 
-  const harmonics = [1, 3, 5, 7, 9, 11];
-  const volumes = [1.0, 0.5, 0.2, 0.15, 0.1, 0.075];
-  oscillators[id] = [];
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        destination = audioCtx.createMediaStreamDestination();
+        mediaRecorder = new MediaRecorder(destination.stream);
 
-  harmonics.forEach((multiplier, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          const link = document.getElementById("downloadLink");
+          link.href = url;
+          link.style.display = "inline";
+          link.textContent = "🗃️ ダウンロード録音";
+        };
+      }
+    }
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq * multiplier, audioCtx.currentTime);
+    function startTone(freq, id) {
+      if (!audioCtx || oscillators[id]) return;
 
-    gain.gain.setValueAtTime(0, audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(volumes[i] * 0.5, audioCtx.currentTime + 0.05);
+      const harmonics = [1, 3, 5, 7, 9, 11];
+      const volumes = [1.0, 0.5, 0.2, 0.15, 0.1, 0.075];
+      oscillators[id] = [];
 
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.connect(destination); // 録音用
+      harmonics.forEach((multiplier, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq * multiplier;
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(volumes[i] * 0.5, audioCtx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.connect(destination);
+        osc.start();
+        oscillators[id].push({ osc, gain });
+      });
+    }
 
-    osc.start();
+    function stopTone(id) {
+      if (!oscillators[id]) return;
+      oscillators[id].forEach(({ osc, gain }) => {
+        gain.gain.cancelScheduledValues(audioCtx.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+        osc.stop(audioCtx.currentTime + 0.2);
+      });
+      delete oscillators[id];
+    }
 
-    oscillators[id].push({osc, gain});
-  });
-}
+    function createKeyboard() {
+      const keyboard = document.getElementById("keyboard");
+      for (let n = 0; n < totalKeys; n++) {
+        const freq = f0 * Math.pow(step, n);
+        const isBlack = blackKeys.includes(n);
+        const label = labels[n % labels.length];
+        const key = document.createElement("div");
+        key.className = "key " + (isBlack ? "black" : "white");
+        const textColor = isBlack ? "white" : "black";
+        key.innerHTML = `
+          <div class="label-top" style="color: ${textColor};">${label}</div>
+          <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
+        `;
 
-// --- 音を止める ---
-function stopTone(id) {
-  if (!oscillators[id]) return;
+        key.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          initAudioContext();
+          startTone(freq, n);
+        });
+        key.addEventListener("pointerup", (e) => {
+          e.preventDefault();
+          stopTone(n);
+        });
+        key.addEventListener("pointerleave", (e) => {
+          e.preventDefault();
+          stopTone(n);
+        });
 
-  oscillators[id].forEach(({osc, gain}) => {
-    gain.gain.cancelScheduledValues(audioCtx.currentTime);
-    gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-    osc.stop(audioCtx.currentTime + 0.2);
-  });
+        keyboard.appendChild(key);
+      }
+    }
 
-  delete oscillators[id];
-}
-
-// --- playToneは不要なので削除またはコメントアウト ---
-
-// --- キーボード作成時のクリックイベントを押しっぱなし対応に ---
-function createKeyboard() {
-  const keyboard = document.getElementById("keyboard");
-
-  for (let n = 0; n < totalKeys; n++) {
-    const freq = f0 * Math.pow(step, n);
-    const isBlack = blackKeys.includes(n);
-    const label = labels[n % labels.length];
-
-    const key = document.createElement("div");
-    key.className = "key " + (isBlack ? "black" : "white");
-
-    const textColor = isBlack ? "white" : "black";
-
-    key.innerHTML = `
-      <div class="label-top" style="color: ${textColor};">${label}</div>
-      <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
-    `;
-
-    // マウス・タッチ押し開始で音鳴らす
-    key.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      startTone(freq, n);
+    document.addEventListener("keydown", (event) => {
+      const n = keyToIndex[event.key];
+      if (n !== undefined && n >= 0 && n < totalKeys) {
+        const freq = f0 * Math.pow(step, n);
+        initAudioContext();
+        startTone(freq, n);
+      }
     });
-    // マウス・タッチ離したら音止める
-    key.addEventListener("pointerup", (e) => {
-      e.preventDefault();
-      stopTone(n);
-    });
-    // キャンセル（指が外れた等）でも止める
-    key.addEventListener("pointerleave", (e) => {
-      e.preventDefault();
-      stopTone(n);
+
+    document.addEventListener("keyup", (event) => {
+      const n = keyToIndex[event.key];
+      if (n !== undefined) {
+        stopTone(n);
+      }
     });
 
-    keyboard.appendChild(key);
-  }
-}
+    document.getElementById("startRec").addEventListener("click", () => {
+      initAudioContext();
+      recordedChunks = [];
+      mediaRecorder.start();
+      document.getElementById("startRec").disabled = true;
+      document.getElementById("stopRec").disabled = false;
+      document.getElementById("downloadLink").style.display = "none";
+    });
 
-// --- キーボードでキー押したら音開始、離したら停止 ---
-document.addEventListener("keydown", (event) => {
-  const n = keyToIndex[event.key];
-  if (n !== undefined && n >= 0 && n < totalKeys) {
-    const freq = f0 * Math.pow(step, n);
-    startTone(freq, n);
-  }
-});
+    document.getElementById("stopRec").addEventListener("click", () => {
+      mediaRecorder.stop();
+      document.getElementById("startRec").disabled = false;
+      document.getElementById("stopRec").disabled = true;
+    });
 
-document.addEventListener("keyup", (event) => {
-  const n = keyToIndex[event.key];
-  if (n !== undefined && n >= 0 && n < totalKeys) {
-    stopTone(n);
-  }
-});
-
+    createKeyboard();
   </script>
 </body>
 </html>
