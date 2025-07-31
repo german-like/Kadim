@@ -156,24 +156,24 @@
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
       for (let n = 0; n < totalKeys; n++) {
-        const freq = f0 * Math.pow(step, n);
-        const isBlack = blackKeys.includes(n);
-        const label = labels[n % labels.length];
-        const key = document.createElement("div");
-        key.className = "key " + (isBlack ? "black" : "white");
-        const textColor = isBlack ? "white" : "black";
-        key.innerHTML = `
-          <div class="label-top" style="color: ${textColor};">${label}</div>
-          <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
-        `;
+  const freq = f0 * Math.pow(step, n);
+  const isBlack = blackKeys.includes(n);
+  const label = labels[n % labels.length];
 
-        for (let n = 0; n < totalKeys; n++) {
-          const isBlack = blackIndices.includes(n);
-          const key = document.createElement("div");
-          key.className = "key " + (isBlack ? "black" : "white");
-          key.textContent = labels[n % labels.length];
-          keyboard.appendChild(key);
-        }
+  const key = document.createElement("div");
+  key.className = "key " + (isBlack ? "black" : "white");
+
+  const textColor = isBlack ? "white" : "black";
+
+  key.innerHTML = `
+    <div class="label-top" style="color: ${textColor};">${label}</div>
+    <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
+  `;
+
+  key.addEventListener("click", () => playTone(freq));
+  keyboard.appendChild(key);
+}
+
 
         key.addEventListener("pointerdown", (e) => {
           e.preventDefault();
