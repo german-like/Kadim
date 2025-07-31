@@ -2,113 +2,210 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ラベル付き音律キーボード</title>
+  <title>カディム式鍵盤</title>
   <style>
     .keyboard {
       display: flex;
-      position: relative;
-      height: 200px;
-      user-select: none;
+      flex-wrap: nowrap;
     }
+
     .key {
-      width: 30px;
-      height: 100%;
+      width: 40px;
+      height: 200px;
       border: 1px solid #000;
-      background: white;
-      text-align: center;
-      line-height: 180px;
-      font-size: 12px;
+      box-sizing: border-box;
+      cursor: pointer;
+      user-select: none;
       position: relative;
-      z-index: 1;
     }
-    .key.black {
-      width: 20px;
-      height: 120px;
+
+    .white {
+      background: white;
+    }
+
+    .white:hover {
+      background: #ddf;
+    }
+
+    .black {
       background: black;
       color: white;
-      position: absolute;
-      top: 0;
-      z-index: 2;
     }
-    .label {
+
+    .black:hover {
+      background: #444;
+    }
+
+    .label-top,
+    .label-bottom {
       position: absolute;
-      bottom: 4px;
       width: 100%;
-      text-align: center;
       font-size: 10px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .label-top {
+      top: 5px;
+    }
+
+    .label-bottom {
+      bottom: 5px;
+    }
+
+    #controls {
+      margin: 1em 0;
+    }
+
+    button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
+  <h2>カディム式鍵盤</h2>
+  <p>任意の音を鳴らし、録音し、ダウンロードできます。</p>
+
+  <div id="controls">
+    <button id="startRec">⏺️ 録音開始</button>
+    <button id="stopRec" disabled>⏹ 録音停止</button>
+    <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
+  </div>
+
   <div class="keyboard" id="keyboard"></div>
 
   <script>
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const f0 = 130.81;
-    const stepRatio = Math.pow(3, 1/17);
+    const f0 = 100;
+    const step = Math.pow(3 , 1 / 17);
+    const totalKeys = 34;
+    const blackKeys = [4,9,14,19,24,29];
     const labels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa"];
-    const blackKeyNs = [2,3,6,7,10,11,14,15];
-    const activeNotes = {};
+    const keyToIndex = {
+      'a': 0,  's': 1,  'd': 2,  'f': 3,  'g': 4,
+      'h': 5,  'j': 6,  'k': 7,  'l': 8,  ';': 9,
+      'q': 10, 'w': 11, 'e': 12, 'r': 13, 't': 14,
+      'y': 15, 'u': 16, 'i': 17, 'o': 18, 'p': 19,
+      'z': 20, 'x': 21, 'c': 22, 'v': 23, 'b': 24,
+      'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
+      '1': 30, '2': 31, '3': 32, '4': 33, '5': 34, 
+    };
 
-    const keyboardEl = document.getElementById("keyboard");
+    let audioCtx;
+    let mediaRecorder;
+    let recordedChunks = [];
+    let destination;
 
-    for (let n = 0; n < 17; n++) {
-      const freq = f0 * Math.pow(stepRatio, n);
-      const isBlack = blackKeyNs.includes(n);
-      const key = document.createElement("div");
-      key.className = "key" + (isBlack ? " black" : "");
-      key.style.left = `${n * 17}px`;
-      key.dataset.n = n;
-      key.dataset.freq = freq;
-      key.dataset.label = labels[n % labels.length];
-      key.innerHTML = `<div class="label">${labels[n % labels.length]}</div>`;
-      
-      key.addEventListener("mousedown", () => {
-        startTone(freq, n);
-      });
-      key.addEventListener("mouseup", () => {
-        stopTone(n);
-      });
-      key.addEventListener("mouseleave", () => {
-        stopTone(n);
-      });
-      keyboardEl.appendChild(key);
+    document.addEventListener("keydown", (event) => {
+      const n = keyToIndex[event.key];
+      if (n !== undefined && n >= 0 && n < totalKeys) {
+        const freq = f0 * Math.pow(step, n);
+        playTone(freq);
+      }
+    });
+    
+    // 無音の持続ノードを作る関数
+    function startSilence() {
+    const silentOsc = audioCtx.createOscillator();
+    const silentGain = audioCtx.createGain();
+    silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
+
+    silentOsc.connect(silentGain);
+    silentGain.connect(destination); // 録音先にだけ接続（スピーカーには出さない）
+
+    silentOsc.start();
+    // 無限再生（止めるときは記録停止後に手動で止めてもOK）
     }
 
-    document.addEventListener("mouseup", () => {
-      Object.keys(activeNotes).forEach(n => stopTone(n));
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        destination = audioCtx.createMediaStreamDestination();
+        mediaRecorder = new MediaRecorder(destination.stream);
+
+        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          const link = document.getElementById("downloadLink");
+          link.href = url;
+          link.style.display = "inline";
+          link.textContent = "🗃️ ダウンロード録音";
+          
+          startSilence(); // ←🔴 ここを追加！
+          
+        };
+      }
+    }
+
+function playTone(frequency, duration = 3000, volume = 1.0) {
+  if (!audioCtx) return;
+
+  const harmonics = [1, 3, 5, 7, 9, 11]; // 1=基音, 2=第2倍音, 3=第3倍音
+  const volumes = [1.0, 0.5, 0.2, 0.15, 0.1, 0.075]; // 各倍音の相対音量（基音:倍音）
+
+  harmonics.forEach((multiplier, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = frequency * multiplier;
+
+    gain.gain.setValueAtTime(volume * volumes[i], audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.connect(destination); // 録音用
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration / 1000);
+  });
+}
+
+    function createKeyboard() {
+      const keyboard = document.getElementById("keyboard");
+
+      for (let n = 0; n < totalKeys; n++) {
+        const freq = f0 * Math.pow(step, n);
+        const isBlack = blackKeys.includes(n);
+        const label = labels[n % labels.length];
+
+        const key = document.createElement("div");
+        key.className = "key " + (isBlack ? "black" : "white");
+
+        const textColor = isBlack ? "white" : "black";
+
+        key.innerHTML = `
+          <div class="label-top" style="color: ${textColor};">${label}</div>
+          <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
+        `;
+
+        key.addEventListener("click", () => playTone(freq));
+        keyboard.appendChild(key);
+      }
+    }
+
+    // 録音制御
+    document.getElementById("startRec").addEventListener("click", () => {
+      initAudioContext();
+      recordedChunks = [];
+      mediaRecorder.start();
+      document.getElementById("startRec").disabled = true;
+      document.getElementById("stopRec").disabled = false;
+      document.getElementById("downloadLink").style.display = "none";
     });
 
-    function startTone(frequency, keyID) {
-      if (activeNotes[keyID]) return;
+    document.getElementById("stopRec").addEventListener("click", () => {
+      mediaRecorder.stop();
+      document.getElementById("startRec").disabled = false;
+      document.getElementById("stopRec").disabled = true;
+    });
 
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      osc.type = "sine"; // 弦楽器風
-      osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.8, audioCtx.currentTime + 0.1); // フェードイン
-
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-
-      osc.start();
-
-      activeNotes[keyID] = { osc, gainNode };
-    }
-
-    function stopTone(keyID) {
-      const note = activeNotes[keyID];
-      if (!note) return;
-
-      const now = audioCtx.currentTime;
-      note.gainNode.gain.cancelScheduledValues(now);
-      note.gainNode.gain.setValueAtTime(note.gainNode.gain.value, now);
-      note.gainNode.gain.linearRampToValueAtTime(0.0001, now + 0.3); // フェードアウト
-      note.osc.stop(now + 0.3);
-
-      delete activeNotes[keyID];
-    }
+    createKeyboard();
   </script>
 </body>
 </html>
