@@ -94,6 +94,7 @@
       'n': 25, 'm': 26, ',': 27, '.': 28, '/': 29,
       '1': 30, '2': 31, '3': 32, '4': 33, '5': 34,
     };
+    const keyboard = document.getElementById("keyboard");
 
     let audioCtx;
     let destination;
@@ -109,7 +110,7 @@
 
         mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
         mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunks, { type: 'audio/mp3' });
+          const blob = new Blob(recordedChunks, { type: 'audio/wav' });
           const url = URL.createObjectURL(blob);
           const link = document.getElementById("downloadLink");
           link.href = url;
@@ -165,6 +166,14 @@
           <div class="label-top" style="color: ${textColor};">${label}</div>
           <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
         `;
+
+        for (let n = 0; n < totalKeys; n++) {
+          const isBlack = blackIndices.includes(n);
+          const key = document.createElement("div");
+          key.className = "key " + (isBlack ? "black" : "white");
+          key.textContent = labels[n % labels.length];
+          keyboard.appendChild(key);
+        }
 
         key.addEventListener("pointerdown", (e) => {
           e.preventDefault();
