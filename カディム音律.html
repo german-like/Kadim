@@ -118,17 +118,19 @@
       }
     }
 
-   function startSilence() {
-    const silentOsc = audioCtx.createOscillator();
-    const silentGain = audioCtx.createGain();
-    silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
+function startSilence() {
+  if (!audioCtx) return;
 
-    silentOsc.connect(silentGain);
-    silentGain.connect(destination); // 録音先にだけ接続（スピーカーには出さない）
+  const silentOsc = audioCtx.createOscillator();
+  const silentGain = audioCtx.createGain();
 
-    silentOsc.start();
-    // 無限再生（止めるときは記録停止後に手動で止めてもOK）
-    }
+  silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
+  silentOsc.connect(silentGain);
+  silentGain.connect(destination); // 録音先にだけつなぐ
+
+  silentOsc.start();
+}
+
 
     function startTone(freq, id) {
       if (!audioCtx || oscillators[id]) return;
@@ -214,6 +216,7 @@
     document.getElementById("startRec").addEventListener("click", () => {
       initAudioContext();
       recordedChunks = [];
+      startSilence();
       mediaRecorder.start();
       document.getElementById("startRec").disabled = true;
       document.getElementById("stopRec").disabled = false;
