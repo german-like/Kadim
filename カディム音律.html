@@ -63,7 +63,7 @@
     const baseLabels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa"];
     const allLabels = baseLabels.concat(baseLabels.map(l => l + "'"));
     const baseBlack = [2, 3, 6, 7, 10, 11, 14, 15];
-    const blackKeys = baseBlack.concat(baseBlack.map(n => n + baseRatios.length));
+    const blackKeys = baseBlack.concat(baseBlack.map(n => n + baseRatios.length - 1));
     const totalKeys = allRatios.length;
 
     let audioCtx;
