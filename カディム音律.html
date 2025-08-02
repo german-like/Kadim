@@ -1,114 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>カディム式鍵盤</title>
+  <meta charset="UTF-8" />
+  <title>カディム式鍵盤（トリターブ対応）</title>
   <style>
     .keyboard {
       display: flex;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+      max-width: 100%;
     }
-
     .key {
       width: 40px;
-      height: 200px;
+      height: 180px;
       border: 1px solid #000;
       box-sizing: border-box;
+      text-align: center;
+      position: relative;
       cursor: pointer;
       user-select: none;
-      position: relative;
+      margin: 1px;
     }
-
     .white {
       background: white;
     }
-
-    .white:hover {
-      background: #ddf;
-    }
-
     .black {
-      background: #433333;
+      background: #444;
       color: white;
     }
-
-
-    .black:hover {
-      background: #766666;
-    }
-
-    .label-top,
-    .label-bottom {
+    .label-top, .label-bottom {
       position: absolute;
       width: 100%;
       font-size: 10px;
-      text-align: center;
       pointer-events: none;
     }
-
-    .label-top {
-      top: 5px;
-    }
-
-    .label-bottom {
-      bottom: 5px;
-    }
-
+    .label-top { top: 4px; }
+    .label-bottom { bottom: 4px; }
     #controls {
       margin: 1em 0;
     }
-
     button {
-      margin-right: 10px;
       padding: 8px 16px;
       font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h2>カディム式鍵盤</h2>
-  <p>押している間だけ音が鳴り、録音・ダウンロードができます。</p>
-
+  <h2>カディム式鍵盤（トリターブ対応）</h2>
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
     <a id="downloadLink" style="display:none;" download="recording.webm">🗃️ ダウンロード</a>
   </div>
-
   <div class="keyboard" id="keyboard"></div>
 
   <script>
-    const f0 = 100;
-    const step = Math.pow(3, 1 / 17);
-    const totalKeys = 35;
-    const blackKeys = [2,3,6,7,10,11,14,15,19,20,23,24,27,28,31,32];
-    const labels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa"];
-    const keyToIndex = {
-      'q': 0,  '2': 1,  'w': 2,  '3': 3,  'e': 4,
-      '4': 5,  'r': 6,  '5': 7,  't': 8,  '6': 9,
-      'y': 10, '7': 11, 'u': 12, '8': 13, 'i': 14,
-      '9': 15, 'o': 16, 'z': 17, 's': 18, 'x': 19,
-      'd': 20,  'c': 21,  'f': 22,  'v': 23, 'g': 24,
-      'b': 25,  'h': 26,  'n': 27,  'j': 28, 'm': 29,
-      'k': 30, ',': 31, 'l': 32, '.': 33,';': 34,
-      ':': 35
-    };
+    const baseFreq = 110;
+    const baseRatios = [
+      1/1, 49/45, 63/55, 25/21, 9/7, 7/5, 51/35, 11/7, 5/3,
+      9/5, 21/11, 55/27, 15/7, 7/3, 27/11, 55/21, 25/9, 3/1
+    ];
+    const allRatios = baseRatios.concat(baseRatios.map(r => r * 3));
+    const baseLabels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa","Za"];
+    const allLabels = baseLabels.concat(baseLabels.map(l => l + "'"));
+    const baseBlack = [1, 2, 4, 5, 6, 9, 11, 13, 14, 16];
+    const blackKeys = baseBlack.concat(baseBlack.map(n => n + baseRatios.length));
+    const totalKeys = allRatios.length;
 
     let audioCtx;
-    let destination;
     let mediaRecorder;
     let recordedChunks = [];
-    const oscillators = {};
+    let destination;
+    const activeOscillators = {};
 
     function initAudioContext() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         destination = audioCtx.createMediaStreamDestination();
         mediaRecorder = new MediaRecorder(destination.stream);
-
         mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
         mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
           const url = URL.createObjectURL(blob);
           const link = document.getElementById("downloadLink");
           link.href = url;
@@ -118,105 +89,77 @@
       }
     }
 
-function startSilence() {
-  if (!audioCtx) return;
+    function startTone(key, freq, volume = 0.4) {
+      if (!audioCtx) return;
+      if (activeOscillators[key]) return;
 
-  const silentOsc = audioCtx.createOscillator();
-  const silentGain = audioCtx.createGain();
+      const harmonics = [1, 3, 5, 7];
+      const volumes = [1.0, 0.3, 0.15, 0.1];
+      const now = audioCtx.currentTime;
+      const gains = [];
 
-  silentGain.gain.setValueAtTime(0, audioCtx.currentTime); // 音量ゼロ
-  silentOsc.connect(silentGain);
-  silentGain.connect(destination); // 録音先にだけつなぐ
+      const group = [];
 
-  silentOsc.start();
-}
-
-
-    function startTone(freq, id) {
-      if (!audioCtx || oscillators[id]) return;
-
-      const harmonics = [1];
-      const volumes = [1.0];
-      oscillators[id] = [];
-
-      harmonics.forEach((multiplier, i) => {
+      harmonics.forEach((mult, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.value = freq * multiplier;
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(volumes[i] * 0.5, audioCtx.currentTime + 0.05);
-        osc.connect(gain);
+        osc.frequency.value = freq * mult;
+        gain.gain.setValueAtTime(volume * volumes[i], now);
         gain.connect(audioCtx.destination);
         gain.connect(destination);
+        osc.connect(gain);
         osc.start();
-        oscillators[id].push({ osc, gain });
+        group.push({ osc, gain });
       });
+
+      activeOscillators[key] = group;
     }
 
-    function stopTone(id) {
-      if (!oscillators[id]) return;
-      oscillators[id].forEach(({ osc, gain }) => {
-        gain.gain.cancelScheduledValues(audioCtx.currentTime);
-        gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-        osc.stop(audioCtx.currentTime + 0.2);
+    function stopTone(key) {
+      const group = activeOscillators[key];
+      if (!group) return;
+
+      const now = audioCtx.currentTime;
+      group.forEach(({ osc, gain }) => {
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        osc.stop(now + 0.35);
       });
-      delete oscillators[id];
+
+      delete activeOscillators[key];
     }
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
+
       for (let n = 0; n < totalKeys; n++) {
-        const freq = f0 * Math.pow(step, n);
+        const freq = baseFreq * allRatios[n];
         const isBlack = blackKeys.includes(n);
-        const label = labels[n % labels.length];
+        const label = allLabels[n] || "";
+
         const key = document.createElement("div");
         key.className = "key " + (isBlack ? "black" : "white");
+
         const textColor = isBlack ? "white" : "black";
         key.innerHTML = `
           <div class="label-top" style="color: ${textColor};">${label}</div>
           <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
         `;
 
-        key.addEventListener("pointerdown", (e) => {
-          e.preventDefault();
+        key.addEventListener("pointerdown", () => {
           initAudioContext();
-          startTone(freq, n);
+          startTone(n, freq);
         });
-        key.addEventListener("pointerup", (e) => {
-          e.preventDefault();
-          stopTone(n);
-        });
-        key.addEventListener("pointerleave", (e) => {
-          e.preventDefault();
-          stopTone(n);
-        });
-
+        key.addEventListener("pointerup", () => stopTone(n));
+        key.addEventListener("pointerleave", () => stopTone(n));
         keyboard.appendChild(key);
       }
     }
 
-    document.addEventListener("keydown", (event) => {
-      const n = keyToIndex[event.key];
-      if (n !== undefined && n >= 0 && n < totalKeys) {
-        const freq = f0 * Math.pow(step, n);
-        initAudioContext();
-        startTone(freq, n);
-      }
-    });
-
-    document.addEventListener("keyup", (event) => {
-      const n = keyToIndex[event.key];
-      if (n !== undefined) {
-        stopTone(n);
-      }
-    });
-
+    // 録音制御
     document.getElementById("startRec").addEventListener("click", () => {
       initAudioContext();
       recordedChunks = [];
-      startSilence();
       mediaRecorder.start();
       document.getElementById("startRec").disabled = true;
       document.getElementById("stopRec").disabled = false;
@@ -231,5 +174,15 @@ function startSilence() {
 
     createKeyboard();
   </script>
+</body>
+</html>
+    document.getElementById("stopRec").addEventListener("click", () => {
+      mediaRecorder.stop();
+      document.getElementById("startRec").disabled = false;
+      document.getElementById("stopRec").disabled = true;
+    });
+
+    createKeyboard();
+  </script>
 </body>
 </html>
