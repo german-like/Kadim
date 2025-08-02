@@ -135,8 +135,8 @@ function startSilence() {
     function startTone(freq, id) {
       if (!audioCtx || oscillators[id]) return;
 
-      const harmonics = [1, 3, 9];
-      const volumes = [1, 0.57, 0.08];
+      const harmonics = [1, 3];
+      const volumes = [0.7, 0.4];
       oscillators[id] = [];
 
       harmonics.forEach((multiplier, i) => {
