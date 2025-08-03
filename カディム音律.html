@@ -49,7 +49,7 @@
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
-    <a id="downloadLink" style="display:none;" download="recording.webm">🗃️ ダウンロード</a>
+    <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
   </div>
   <div class="keyboard" id="keyboard"></div>
 
@@ -65,6 +65,36 @@
     const baseBlack = [2, 3, 6, 7, 10, 11, 14, 15];
     const blackKeys = baseBlack.concat(baseBlack.map(n => n + baseRatios.length));
     const totalKeys = allRatios.length;
+const keyToIndex = {
+  'q': 0,  '2': 1,  'w': 2,  '3': 3,  'e': 4,  '4': 5,  'r': 6,  '5': 7,  't': 8,
+  '6': 9,  'y':10,  '7':11,  'u':12,  '8':13,  'i':14,  '9':15,  'o':16,  '0':17,
+
+  'z':18,  's':19,  'x':20,  'd':21,  'c':22,  'f':23,  'v':24,  'g':25,  'b':26,
+  'h':27,  'n':28,  'j':29,  'm':30,  'k':31,  ',':32,  'l':33,  '.':34,  ';':35
+};
+
+
+const pressedKeys = new Set();
+
+document.addEventListener("keydown", (e) => {
+  if (pressedKeys.has(e.key)) return; // 同じキーの重複防止
+  const n = keyToIndex[e.key];
+  if (n !== undefined && n >= 0 && n < allRatios.length) {
+    initAudioContext();
+    const freq = baseFreq * allRatios[n];
+    startTone(n, freq);
+    pressedKeys.add(e.key);
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  const n = keyToIndex[e.key];
+  if (n !== undefined && n >= 0 && n < allRatios.length) {
+    stopTone(n);
+    pressedKeys.delete(e.key);
+  }
+});
+
 
     let audioCtx;
     let mediaRecorder;
