@@ -2,59 +2,77 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>カディム式サンプル音源鍵盤</title>
+  <title>カディム式鍵盤（トリターブ対応）</title>
   <style>
-    .keyboard { display: flex; flex-wrap: nowrap; }
+    .keyboard {
+      display: flex;
+      flex-wrap: wrap;
+      max-width: 100%;
+    }
     .key {
       width: 40px;
-      height: 200px;
+      height: 180px;
       border: 1px solid #000;
       box-sizing: border-box;
+      text-align: center;
+      position: relative;
       cursor: pointer;
       user-select: none;
-      background: white;
-      position: relative;
+      margin: 1px;
     }
-    .key:hover { background: #ddf; }
+    .white {
+      background: white;
+    }
+    .black {
+      background: #444;
+      color: white;
+    }
     .label-top, .label-bottom {
       position: absolute;
       width: 100%;
       font-size: 10px;
-      text-align: center;
       pointer-events: none;
     }
-    .label-top { top: 5px; }
-    .label-bottom { bottom: 5px; }
-    #controls { margin: 1em 0; }
-    button { margin-right: 10px; padding: 8px 16px; font-size: 14px; }
+    .label-top { top: 4px; }
+    .label-bottom { bottom: 4px; }
+    #controls {
+      margin: 1em 0;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <h2>カディム式鍵盤（サンプル音源使用）</h2>
-  <p>ピアノのサンプル音で演奏・録音ができます。</p>
+  <h2>カディム式鍵盤（トリターブ対応）</h2>
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
-    <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
+    <a id="downloadLink" style="display:none;" download="recording.webm">🗃️ ダウンロード</a>
   </div>
   <div class="keyboard" id="keyboard"></div>
 
   <script>
     const baseFreq = 110;
-    const ratios = [
+    const baseRatios = [
       1/1, 49/45, 63/55, 25/21, 9/7, 7/5, 51/35, 11/7, 5/3,
-      9/5, 21/11, 55/27, 15/7, 7/3, 27/11, 55/21, 25/9, 3/1
+      9/5, 21/11, 55/27, 15/7, 7/3, 27/11, 55/21, 25/9
     ];
-    const totalKeys = ratios.length;
-    const labels = ["Da", "Va", "La", "Ga", "Ta", "Pa", "Na", "Ma", "Sa", "Ra", "Sha", "Ka", "Xa", "Pha", "Ja", "Ba", "Wa", "Za"];
+    const allRatios = baseRatios.concat(baseRatios.map(r => r * 3));
+    const baseLabels = ["Da","Va","La","Ga","Ta","Pa","Na","Ma","Sa","Ra","Sha","Ka","Xa","Pha","Ja","Ba","Wa"];
+    const allLabels = baseLabels.concat(baseLabels.map(l => l + "'"));
+    const baseBlack = [2, 3, 6, 7, 10, 11, 14, 15];
+    const blackKeys = baseBlack.concat(baseBlack.map(n => n + baseRatios.length));
+    const totalKeys = allRatios.length;
 
     let audioCtx;
-    let destination;
     let mediaRecorder;
     let recordedChunks = [];
-    let sampleBuffer = null;
+    let destination;
+    const activeOscillators = {};
 
-    async function initAudio() {
+    function initAudioContext() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         destination = audioCtx.createMediaStreamDestination();
@@ -68,67 +86,79 @@
           link.style.display = "inline";
           link.textContent = "🗃️ ダウンロード録音";
         };
-        await loadSample("piano_C4.wav");  // サンプル音源を読み込む
       }
     }
 
-    async function loadSample(url) {
-      const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      sampleBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    function startTone(key, freq, volume = 0.4) {
+      if (!audioCtx) return;
+      if (activeOscillators[key]) return;
+
+      const harmonics = [1, 3, 5, 7];
+      const volumes = [1.0, 0.3, 0.15, 0.1];
+      const now = audioCtx.currentTime;
+      const gains = [];
+
+      const group = [];
+
+      harmonics.forEach((mult, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq * mult;
+        gain.gain.setValueAtTime(volume * volumes[i], now);
+        gain.connect(audioCtx.destination);
+        gain.connect(destination);
+        osc.connect(gain);
+        osc.start();
+        group.push({ osc, gain });
+      });
+
+      activeOscillators[key] = group;
     }
 
-    function playSample(ratioIndex) {
-      if (!sampleBuffer || !audioCtx) return;
-      const source = audioCtx.createBufferSource();
-      source.buffer = sampleBuffer;
-      const playbackRate = ratios[ratioIndex];
-      source.playbackRate.value = playbackRate;
-      source.connect(audioCtx.destination);
-      source.connect(destination); // 録音用
-      source.start();
+    function stopTone(key) {
+      const group = activeOscillators[key];
+      if (!group) return;
+
+      const now = audioCtx.currentTime;
+      group.forEach(({ osc, gain }) => {
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        osc.stop(now + 0.35);
+      });
+
+      delete activeOscillators[key];
     }
 
     function createKeyboard() {
       const keyboard = document.getElementById("keyboard");
-      for (let i = 0; i < totalKeys; i++) {
+
+      for (let n = 0; n < totalKeys; n++) {
+        const freq = baseFreq * allRatios[n];
+        const isBlack = blackKeys.includes(n);
+        const label = allLabels[n] || "";
+
         const key = document.createElement("div");
-        key.className = "key";
+        key.className = "key " + (isBlack ? "black" : "white");
+
+        const textColor = isBlack ? "white" : "black";
         key.innerHTML = `
-          <div class="label-top">${labels[i % labels.length]}</div>
-          <div class="label-bottom">${ratios[i].toFixed(3)}</div>
+          <div class="label-top" style="color: ${textColor};">${label}</div>
+          <div class="label-bottom" style="color: ${textColor};">${freq.toFixed(1)} Hz</div>
         `;
-        key.addEventListener("mousedown", () => {
-          initAudio();
-          playSample(i);
+
+        key.addEventListener("pointerdown", () => {
+          initAudioContext();
+          startTone(n, freq);
         });
+        key.addEventListener("pointerup", () => stopTone(n));
+        key.addEventListener("pointerleave", () => stopTone(n));
         keyboard.appendChild(key);
       }
     }
 
-    const keyMap = {
-      '0':0, 'q':1, '2':2, 'w':3, '3':4, 'e':5, '4':6, 'r':7, '5':8,
-      't':9, '6':10,'y':11,'7':12,'u':13,'8':14,'i':15,'9':16,'o':17
-    };
-
-    const heldKeys = new Set();
-
-    document.addEventListener("keydown", e => {
-      if (heldKeys.has(e.key)) return;
-      const index = keyMap[e.key];
-      if (index !== undefined) {
-        initAudio();
-        playSample(index);
-        heldKeys.add(e.key);
-      }
-    });
-
-    document.addEventListener("keyup", e => {
-      heldKeys.delete(e.key);
-    });
-
+    // 録音制御
     document.getElementById("startRec").addEventListener("click", () => {
-      initAudio();
+      initAudioContext();
       recordedChunks = [];
       mediaRecorder.start();
       document.getElementById("startRec").disabled = true;
