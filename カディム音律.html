@@ -10,9 +10,8 @@
       max-width: 100%;
     }
     .key {
-      width: 40px;
+      width: 35px;
       height: 180px;
-      border: 1px solid #000;
       box-sizing: border-box;
       text-align: center;
       position: relative;
@@ -21,11 +20,10 @@
       margin: 1px;
     }
     .white {
-      background: white;
+      background-image: linear-gradient(#c0bfa4, #fffefb);
     }
     .black {
-      background: #444;
-      color: white;
+      background-image: linear-gradient(#3f4d43, #2d322b);
     }
     .label-top, .label-bottom {
       position: absolute;
@@ -49,7 +47,7 @@
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
-    <a id="downloadLink" style="display:none;" download="recording.mid">🗃️ ダウンロード</a>
+    <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
   </div>
   <div class="keyboard" id="keyboard"></div>
 
