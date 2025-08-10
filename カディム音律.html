@@ -10,7 +10,7 @@
       max-width: 100%;
     }
     .key {
-      width: 2.75%;
+      width: 5.5%;
       height: 180px;
       box-sizing: border-box;
       text-align: center;
@@ -132,7 +132,7 @@ document.addEventListener("keyup", (e) => {
       harmonics.forEach((mult, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'triangle';
+        osc.type = 'square';
         osc.frequency.value = freq * mult;
         gain.gain.setValueAtTime(volume * volumes[i], now);
         gain.connect(audioCtx.destination);
