@@ -10,7 +10,7 @@
       max-width: 100%;
     }
     .key {
-      width: 5.5%;
+      width: 2.75%;
       height: 180px;
       box-sizing: border-box;
       text-align: center;
@@ -45,6 +45,7 @@
 <body>
   <h2>カディム式鍵盤</h2>
   <div id="controls">
+    <input type="number" id="tritaveInput">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
     <a id="downloadLink" style="display:none;" download="recording.wav">🗃️ ダウンロード</a>
@@ -52,7 +53,8 @@
   <div class="keyboard" id="keyboard"></div>
 
   <script>
-    const baseFreq = 110;
+		const	tritave = document.getElementById("tritaveInput")
+    const baseFreq = 110 * tritave;
     const baseRatios = [
       1/1, 49/45, 63/55, 25/21, 9/7, 7/5, 51/35, 11/7, 5/3,
       9/5, 21/11, 55/27, 15/7, 7/3, 27/11, 55/21, 25/9
