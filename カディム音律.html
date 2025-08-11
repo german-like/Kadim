@@ -118,7 +118,7 @@ document.addEventListener("keyup", (e) => {
       }
     }
 
-    function startTone(key, freq, volume = 1.0) {
+    function startTone(key, freq, volume = 0.4) {
       if (!audioCtx) return;
       if (activeOscillators[key]) return;
 
