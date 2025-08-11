@@ -118,7 +118,7 @@ document.addEventListener("keyup", (e) => {
       }
     }
 
-    function startTone(key, freq, volume = 0.4) {
+    function startTone(key, freq, volume = 1.0) {
       if (!audioCtx) return;
       if (activeOscillators[key]) return;
 
@@ -132,7 +132,7 @@ document.addEventListener("keyup", (e) => {
       harmonics.forEach((mult, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'sine';
+        osc.type = 'triangle';
         osc.frequency.value = freq * mult;
         gain.gain.setValueAtTime(volume * volumes[i], now);
         gain.connect(audioCtx.destination);
