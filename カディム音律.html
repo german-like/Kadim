@@ -45,6 +45,10 @@
 </head>
 <body>
   <h2>カディム式鍵盤</h2>
+  <div>
+    <label for="baseFreqSlider">基音: <span id="baseFreqLabel">440</span> Hz</label>
+	<input type="range" id="baseFreqSlider" min="90" max="990" step="1" value="90">
+  </div>
   <div id="controls">
     <button id="startRec">⏺️ 録音開始</button>
     <button id="stopRec" disabled>⏹ 録音停止</button>
@@ -53,7 +57,19 @@
   <div class="keyboard" id="keyboard"></div>
 
   <script>
-	const baseFreq = 110;
+	const baseFreq = 440; // 基音の初期値
+	document.getElementById("baseFreqSlider").addEventListener("input", function() {
+ 	   baseFreq = parseFloat(this.value);
+ 	   document.getElementById("baseFreqLabel").textContent = baseFreq;
+	    updateKeyLabels();
+	});
+	function updateKeyLabels() {
+	    const keys = document.querySelectorAll(".terp-key .label-bottom");
+	    keys.forEach((label, i) => {
+	        const freq = baseFreq * ratios[i % ratios.length];
+	        label.textContent = freq.toFixed(2) + " Hz";
+	    });
+	}
     const baseRatios = [
       1/1, 49/45, 63/55, 25/21, 9/7, 7/5, 81/55, 11/7, 5/3,
       9/5, 21/11, 55/27, 15/7, 7/3, 27/11, 55/21, 25/9
