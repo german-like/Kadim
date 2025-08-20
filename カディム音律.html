@@ -138,9 +138,9 @@ document.addEventListener("keyup", (e) => {
         osc.frequency.value = freq * mult;
 
 		const lfo = audioCtx.createOscillator();
-		lfo.frequency.value = 10; // 2Hzで揺らす
+		lfo.frequency.value = 2; // 2Hzで揺らす
 		const lfoGain = audioCtx.createGain();
-		lfoGain.gain.value = 1.0; // 揺れ幅
+		lfoGain.gain.value = 0.2; // 揺れ幅
 
 		lfo.connect(lfoGain);
 		lfoGain.connect(gain.gain);
