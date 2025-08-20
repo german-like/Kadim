@@ -124,7 +124,7 @@ document.addEventListener("keyup", (e) => {
       if (!audioCtx) return;
       if (activeOscillators[key]) return;
 
-	　const harmonics = [1, 3, 5, 7, 9, 11, 13, 15]; // 奇数倍音
+	　const harmonics = [1, 3, 5]; // 奇数倍音
 	　const volumes = harmonics.map(n => 1/n);      // 音量は 1/n
       const now = audioCtx.currentTime;
       const gains = [];
