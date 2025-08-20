@@ -124,8 +124,8 @@ document.addEventListener("keyup", (e) => {
       if (!audioCtx) return;
       if (activeOscillators[key]) return;
 
-      const harmonics = [1];
-      const volumes = [1.0];
+	　const harmonics = [1, 3, 5, 7, 9, 11, 13, 15]; // 奇数倍音
+	　const volumes = harmonics.map(n => 1/n);      // 音量は 1/n
       const now = audioCtx.currentTime;
       const gains = [];
 
@@ -136,6 +136,16 @@ document.addEventListener("keyup", (e) => {
         const gain = audioCtx.createGain();
         osc.type = 'square';
         osc.frequency.value = freq * mult;
+
+		const lfo = audioCtx.createOscillator();
+		lfo.frequency.value = 10; // 2Hzで揺らす
+		const lfoGain = audioCtx.createGain();
+		lfoGain.gain.value = 1.0; // 揺れ幅
+
+		lfo.connect(lfoGain);
+		lfoGain.connect(gain.gain);
+		lfo.start();
+
         gain.gain.setValueAtTime(volume * volumes[i], now);
         gain.connect(audioCtx.destination);
         gain.connect(destination);
